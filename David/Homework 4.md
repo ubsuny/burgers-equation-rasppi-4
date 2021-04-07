@@ -1,0 +1,28 @@
+# Homework 4
+
+## Problem 1
+
+The first problem involved installing tensorflow for the rasperry pi, which is not as straight forward as installing with a single command. Tensorflow needs to be installed from Google's Bazel. Bazel is what creates the wheel for installation. The wheel creation process is what makes up a majority of the installation time for Tensorflow. [This guide](https://qengineering.eu/install-tensorflow-2.4.0-on-raspberry-64-os.html) already buildt the wheel for Raspberry Pi 4 with 64 bit. Using their guide and their shortcut takes the time of installation from roughly 50 hours down to only 20 minutes for my installation.
+
+After the installation, running the tensorflow file needed to be made compatible because it was originally made with Tensorflow 1, while Tensorflow 2 has depreciated several functions. The sessions and placeholders needed to simply replace `tf` with `tf.compat.v1`. The last thing needed was to disable eager execution of the tensors with `tf.compat.v1.disable_eager_execution()`. Afterwhich, the code ran without any more major issues.
+
+As for the speed of the calculation, the convolution took roughly 6 seconds for N = 500 and 1000 steps. But using `time.time()` with the whole loop takes roughly 12 seconds. This is because plotting each image as a movie takes the same time roughly. Using `%timeit`, the concolution takes 22 ms ± 524 µs per loop and the plotting takes 21.1 ms ± 293 µs per loop. This does make sense however, because now there needs to be 1000 picutres displayed sequentially so this sort of timing is to be expected. One can remove the loop and save all the data to a single tensor, but this only works for systems on this scale.
+
+## Problem 2
+
+### Burgers' Equation
+$u_t + uu_x - (0.01/\pi)u_{xx} = 0$,    $x \in [-1,1]$,     $t \in [0,1]$
+
+$u(0,x)=-sin(\pi x)$
+
+$u(t,-1) = u(t,1) = 0$
+
+Implementing the Burgers' equation similar to the [paper provided](https://arxiv.org/pdf/1711.10561.pdf) proved to have the same issues as problem one but with the added complexity of using the placehoders with shape properites that no longer are in use with  Tensorflow. Attempts at this problem initially were to use the code from the [Github repository](https://github.com/maziarraissi/PINNs) the paper uses by taking as little as possible from it as they also perform other evaluations of the system, like a system with or without noise, etcetera. 
+
+This proved difficult trying to understand the use of their code while also trying to make it compatible with Tensorflow 2. The next attempt was to run the whole code and try to convert, but this was equally as fruitful. I was unable to get past trying to reconsile the tensor shapes that needed to be created and inputed based on inputs. I was unable to fully understand their code's parameters because, while I understand the concept of the minimization for a neural network, I am unsure the exact mechanics of the network on the level it is implemented.
+
+Issue tracking in the repository discussed updating the code to Tensorflow 2, but many of them either did specific problems included that were not Burgers, or their repositories are no longer accessible. After discussion with my team, we found another [Github repository](https://github.com/okada39/pinn_burgers) that had already managed to implement the Burgers equation completely in Tensorflow 2. Their license included released its usage and redistribution. All of their files have been includes and are unmodified. I have modified `main.py` to be `Problem 2.ipynb`. The mat file is the exact solution at all timesteps, and unuses lib files and txt files are from the initial attemps.
+
+The speed of the neural network is still slow compared to much of the other methods we have used thus far. The general method is to utilize a physics informed neural network (PINN) to predict the solution. The exact solution data from the paper provided has a resolution of 256 gridpoints. Training the network with 1000 sample points produces relatively accurate results, but the maximum difference between the exact and the prediction is roughly 0.6. This error is due to the difference in the steep drop that forms at `x=0`, where the difference between other sections of the distribution were 0.004. This whole process took about 4 minutes to produce. Then attempting with 10000 samples, which was the default value, and took about 40 minutes to complete. This improved the accuracy of the shape of the graph except at `x=0` again, where the error away from the boundary did not change by much. The final code has 2560 samples, which reflects the original code with a factor of 10 between resolution of graph and samples. Here, the error is roughly the same away from the origin, and takes 10 minutes to run.
+
+It seems that trying to increase accuracy of the function does best at making the curve match quite well, where the boundary will always present the largest error. Away from this points, the errors almost exhibit a periodic function and become more regular but are not decreasing in size, most likely due to the factor of accuracy chosen to be the break condition (with a maximum iteration number of 5000). Better results are seens from increasing samples rather than increasing the maximum allowed iterations and error facotor. At some point, I included a bit of code to play a sound once it completed. Overall, the network functioned as intended and only becomes accurate for much larger sample sizes rather than increasing maximum iterations with small sample sizes.
